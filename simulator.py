@@ -52,9 +52,9 @@ class Simulator:
                 rgb_buf[i, j] = self._wall_color
 
     @staticmethod
-    def create(resolution, dt):
+    def create(resolution, dt, density, velocity):
         boundary_condition = create_boundary_condition1(resolution)
 
-        solver = FdtdSolver(boundary_condition, dt)
+        solver = FdtdSolver(boundary_condition, dt, density, velocity)
 
         return Simulator(solver)

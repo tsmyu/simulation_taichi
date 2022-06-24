@@ -4,14 +4,18 @@ from simulator import Simulator
 
 def main():
     # ti.init(arch=ti.cpu)
-    ti.init(arch=ti.gpu, device_memory_GB=2.0)
+    # ti.init(arch=ti.gpu, device_memory_GB=2.0)
+    arch = ti.vulkan if ti._lib.core.with_vulkan() else ti.cuda
+    ti.init(arch=arch)
 
     resolution = (400, 200)
     window = ti.ui.Window("Fluid Simulation", resolution, vsync=False)
     canvas = window.get_canvas()
 
     dt = 0.01
-    sim = Simulator.create(resolution[1], dt)
+    density = 1.166 #air at 20 
+    velocity = 344 #air at about 20 
+    sim = Simulator.create(resolution[1], dt, density, velocity)
     # video_manager = ti.tools.VideoManager(output_dir=str(img_path), framerate=30, automatic_build=False)
     # count = 0
     paused = False

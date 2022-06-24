@@ -65,16 +65,17 @@ def advect_upwind(vc, phi, i, j):
 class FdtdSolver(Solver):
     """FDTD method"""
 
-    def __init__(self, boundary_condition, dt):
+    def __init__(self, boundary_condition, dt, density, velocity):
         super().__init__(boundary_condition)
 
         self.dt = dt
-
+        self.density = density
+        self.velocity = velocity
         self.v = DoubleBuffers(self._resolution, 2)  # velocity
         self.p = DoubleBuffers(self._resolution, 1)  # pressure
 
         # initial condition
-        self.v.current.fill(ti.Vector([0.4, 0.0]))
+        self.v.current.fill(ti.Vector([0.0, 0.0]))
 
     def update(self):
         self._bc.set_boundary_condition(self.v.current, self.p.current)
@@ -95,32 +96,15 @@ class FdtdSolver(Solver):
     def _update_velocities(self, vn: ti.template(), vc: ti.template(), pc: ti.template()):
         for i, j in vn:
             if not self._bc.is_wall(i, j):
-                vn[i, j] = vc[i, j] + self.dt * (
-                    -advect_upwind(vc, vc, i, j)
-                    - ti.Vector(
-                        [
-                            diff_x(pc, i, j),
-                            diff_y(pc, i, j),
-                        ]
-                    )
-                    + (diff2_x(vc, i, j) + diff2_y(vc, i, j)) / 10.0
-                )
+                dx = fdiff_x(pc, i, j)
+                dy = fdiff_y(pc, i, j)
+                vn[i, j][0] = vc[i, j][0] - self.dt/(self.density*1) * dx
+                vn[i, j][1] = vc[i, j][1] - self.dt/(self.density*1) * dy
 
     @ti.kernel
     def _update_pressures(self, pn: ti.template(), pc: ti.template(), vc: ti.template()):
         for i, j in pn:
             if not self._bc.is_wall(i, j):
-                dx = diff_x(vc, i, j)
-                dy = diff_y(vc, i, j)
-                pn[i, j] = (
-                    (
-                        sample(pc, i + 1, j)
-                        + sample(pc, i - 1, j)
-                        + sample(pc, i, j + 1)
-                        + sample(pc, i, j - 1)
-                    )
-                    - (dx.x + dy.y) / self.dt
-                    + dx.x ** 2
-                    + dy.y ** 2
-                    + 2 * dy.x * dx.y
-                ) * 0.25
+                dx = fdiff_x(vc[:,:][0], i, j)
+                dy = fdiff_y(vc[:,:][1], i, j)
+                pn[i, j] = pc[i, j] - ((self.density*self.velocity^2)/1)*(dx+dy)
